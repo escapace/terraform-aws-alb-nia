@@ -36,13 +36,11 @@ variable "services" {
 variable "listener_arn" {
   type        = string
   description = "Listener ARN on Application Load Balancer."
-  default     = "arn:aws:elasticloadbalancing:us-west-2:132022643098:listener/app/escapace-production-stack-alb/65e65ac19428ded6/ea61ffeb49fabce2"
 }
 
 variable "vpc_id" {
   type        = string
   description = "VPC ID to attach a target group for Consul ingress gateway."
-  default     = "vpc-0ef0478362f09b969"
 }
 
 locals {
