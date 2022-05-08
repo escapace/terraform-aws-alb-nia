@@ -1,26 +1,26 @@
 variable "name" {
-  description  = "Name of the target group."
-  type = string
+  description = "Name of the target group."
+  type        = string
 }
 
 variable "attachments" {
   description = "aws_lb_target_group_attachment arguments"
-  type = list(object({
-    address = string
+  type        = list(object({
+    address           = string
     availability_zone = string
-    port = number
+    port              = number
   }))
 }
 
 variable "deregistration_delay" {
   description = "Amount time for Elastic Load Balancing to wait before changing the state of a deregistering target from draining to unused. The range is 0-3600 seconds. The default value is 300 seconds."
   type        = number
-  default = null 
+  default     = null
 }
   
 variable "load_balancing_algorithm_type" {
   description = "Determines how the load balancer selects targets when routing requests. Only applicable for Application Load Balancer Target Groups. The value is round_robin or least_outstanding_requests. The default is round_robin."
-  type = string
+  type        = string
 
   validation {
     condition     = contains(["round_robin", "least_outstanding_requests"], var.load_balancing_algorithm_type)
@@ -30,13 +30,13 @@ variable "load_balancing_algorithm_type" {
 
 variable "preserve_client_ip" {
   description = "Whether client IP preservation is enabled."
-  type = bool
-  default = null 
+  type        = bool
+  default     = null
 }
 
 variable "protocol_version" {
   description = "Specify HTTP2 to send requests to targets using HTTP/2. The default is HTTP1, which sends requests to targets using HTTP/1.1."
-  type = string
+  type        = string
 
   validation {
     condition     = contains(["HTTP1", "HTTP2"], var.protocol_version)
@@ -57,7 +57,7 @@ variable "protocol" {
 variable "slow_start" {
   description = "Amount time for targets to warm up before the load balancer sends them a full share of requests. The range is 30-900 seconds or 0 to disable. The default value is 0 seconds."
   type        = number
-  default = null
+  default     = null
 }
 
 variable "stickiness_enabled" {
@@ -68,20 +68,20 @@ variable "stickiness_enabled" {
 
 variable "stickiness_cookie_duration" {
   description = "Only used when the type is lb_cookie. The time period, in seconds, during which requests from a client should be routed to the same target. After this time period expires, the load balancer-generated cookie is considered stale. The range is 1 second to 1 week (604800 seconds). The default value is 1 day (86400 seconds)."
-  type = number
-  default = null
+  type        = number
+  default     = null
 }
 
 variable "stickiness_cookie_name" {
   description = "Name of the application based cookie. AWSALB, AWSALBAPP, and AWSALBTG prefixes are reserved and cannot be used. Only needed when type is app_cookie."
-  type = string
-  default = null
+  type        = string
+  default     = null
 }
 
 variable "stickiness_type" {
   description = "The type of sticky sessions. The only current possible values are lb_cookie, app_cookie for ALBs."
-  type = string
-  default = "lb_cookie"
+  type        = string
+  default     = "lb_cookie"
 
   validation {
     condition     = contains(["lb_cookie", "app_cookie"], var.stickiness_type)
@@ -91,39 +91,39 @@ variable "stickiness_type" {
 
 variable "host_headers" {
   description = "A list of host header patterns to match. The maximum size of each pattern is 128 characters. Comparison is case insensitive. Wildcard characters supported: * (matches 0 or more characters) and ? (matches exactly 1 character). Only one pattern needs to match for the condition to be satisfied."
-  type = list(string)
-  default = []
+  type        = list(string)
+  default     = []
 }
 
 variable "http_headers" {
   description = "HTTP headers to match."
   type = list(object({
     http_header_name = string
-    values = list(string)
+    values           = list(string)
   }))
   default = []
 }
 
 variable "http_request_methods" {
   description = "A list of HTTP request methods or verbs to match. Maximum size is 40 characters. Only allowed characters are A-Z, hyphen (-) and underscore (_). Comparison is case sensitive. Wildcards are not supported. Only one needs to match for the condition to be satisfied. AWS recommends that GET and HEAD requests are routed in the same way because the response to a HEAD request may be cached."
-  type = list(string)
-  default = []
+  type        = list(string)
+  default     = []
 }
 
 variable "path_patterns" {
   description = "A list of path patterns to match against the request URL. Maximum size of each pattern is 128 characters. Comparison is case sensitive. Wildcard characters supported: * (matches 0 or more characters) and ? (matches exactly 1 character). Only one pattern needs to match for the condition to be satisfied. Path pattern is compared only to the path of the URL, not to its query string. To compare against the query string, use a query_string condition."
-  type = list(string)
-  default = []
+  type        = list(string)
+  default     = []
 }
 
 variable "listener_arn" {
   description = "The ARN of the listener to which to attach the rule."
-  type = string
+  type        = string
 }
 
 variable "vpc_id" {
   description = "Identifier of the VPC in which to create the target group."
-  type = string
+  type        = string
 }
 
 variable "priority" {
@@ -212,16 +212,6 @@ resource "aws_lb_target_group" "group" {
   tags = {
     Name = var.name
   }
-
-  #health_check {
-  #  enabled             = var.target_group_health_check.enabled
-  #  interval            = var.target_group_health_check.interval
-  #  path                = var.target_group_health_check.path
-  #  timeout             = var.target_group_health_check.timeout
-  #  healthy_threshold   = var.target_group_health_check.healthy_threshold
-  #  unhealthy_threshold = var.target_group_health_check.unhealthy_threshold
-  #  matcher             = var.target_group_health_check.matcher
-  #}
 }
 
 resource "aws_lb_target_group_attachment" "attachment" {
