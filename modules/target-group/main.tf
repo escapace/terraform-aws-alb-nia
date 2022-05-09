@@ -3,9 +3,20 @@ variable "name" {
   type        = string
 }
 
+variable "service_name" {
+  description = "Service name."
+  type        = string
+}
+
+variable "target_group_weight" {
+  description = "The target group weight."
+  type        = number
+  default     = null
+}
+
 variable "attachments" {
-  description = "aws_lb_target_group_attachment arguments"
-  type        = list(object({
+  description = "The \"aws_lb_target_group_attachment\" arguments."
+  type = map(object({
     address           = string
     availability_zone = string
     port              = number
@@ -17,7 +28,7 @@ variable "deregistration_delay" {
   type        = number
   default     = null
 }
-  
+
 variable "load_balancing_algorithm_type" {
   description = "Determines how the load balancer selects targets when routing requests. Only applicable for Application Load Balancer Target Groups. The value is round_robin or least_outstanding_requests. The default is round_robin."
   type        = string
@@ -46,7 +57,7 @@ variable "protocol_version" {
 
 variable "protocol" {
   description = "Protocol to use for routing traffic to the targets. Should be one of HTTP or HTTPS."
-  type = string
+  type        = string
 
   validation {
     condition     = contains(["HTTP", "HTTPS"], var.protocol)
@@ -61,9 +72,9 @@ variable "slow_start" {
 }
 
 variable "stickiness_enabled" {
-  description = "Boolean to enable / disable stickiness. Default is true."
+  description = "Boolean to enable / disable stickiness. Default is false."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "stickiness_cookie_duration" {
@@ -89,51 +100,9 @@ variable "stickiness_type" {
   }
 }
 
-variable "host_headers" {
-  description = "A list of host header patterns to match. The maximum size of each pattern is 128 characters. Comparison is case insensitive. Wildcard characters supported: * (matches 0 or more characters) and ? (matches exactly 1 character). Only one pattern needs to match for the condition to be satisfied."
-  type        = list(string)
-  default     = []
-}
-
-variable "http_headers" {
-  description = "HTTP headers to match."
-  type = list(object({
-    http_header_name = string
-    values           = list(string)
-  }))
-  default = []
-}
-
-variable "http_request_methods" {
-  description = "A list of HTTP request methods or verbs to match. Maximum size is 40 characters. Only allowed characters are A-Z, hyphen (-) and underscore (_). Comparison is case sensitive. Wildcards are not supported. Only one needs to match for the condition to be satisfied. AWS recommends that GET and HEAD requests are routed in the same way because the response to a HEAD request may be cached."
-  type        = list(string)
-  default     = []
-}
-
-variable "path_patterns" {
-  description = "A list of path patterns to match against the request URL. Maximum size of each pattern is 128 characters. Comparison is case sensitive. Wildcard characters supported: * (matches 0 or more characters) and ? (matches exactly 1 character). Only one pattern needs to match for the condition to be satisfied. Path pattern is compared only to the path of the URL, not to its query string. To compare against the query string, use a query_string condition."
-  type        = list(string)
-  default     = []
-}
-
-variable "listener_arn" {
-  description = "The ARN of the listener to which to attach the rule."
-  type        = string
-}
-
 variable "vpc_id" {
   description = "Identifier of the VPC in which to create the target group."
   type        = string
-}
-
-variable "priority" {
-  type        = number
-  default     = null
-  description = "Priority of listener rule between 1 to 50000"
-  # validation {
-  #   condition     = var.listener_rule_priority > 0 && var.listener_rule_priority < 50000
-  #   error_message = "The priority of listener rule must between 1 to 50000."
-  # }
 }
 
 variable "health_check_enabled" {
@@ -178,8 +147,29 @@ variable "health_check_unhealthy_threshold" {
   default     = 3
 }
 
-resource "aws_lb_target_group" "group" {
-  name_prefix = substr(sha256(var.name), -6, 0)
+resource "random_string" "name_prefix" {
+  keepers = {
+    name         = var.name
+    service_name = var.service_name
+
+    vpc_id             = var.vpc_id
+    stickiness_enabled = var.stickiness_enabled
+    stickiness_type    = var.stickiness_type
+  }
+
+  length  = 6
+  lower   = true
+  number  = false
+  special = false
+  upper   = false
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_lb_target_group" "default" {
+  name_prefix = random_string.name_prefix.result
 
   deregistration_delay          = var.deregistration_delay
   load_balancing_algorithm_type = var.load_balancing_algorithm_type
@@ -193,9 +183,9 @@ resource "aws_lb_target_group" "group" {
 
   stickiness {
     enabled         = var.stickiness_enabled
-    type            = var.stickiness_enabled ? var.stickiness_type : null
-    cookie_duration = (var.stickiness_enabled && var.stickiness_type == "lb_cookie") ? var.stickiness_cookie_duration : null
-    cookie_name     = (var.stickiness_enabled && var.stickiness_type == "app_cookie") ? var.stickiness_cookie_name : null
+    type            = var.stickiness_type
+    cookie_duration = (var.stickiness_type == "lb_cookie") ? var.stickiness_cookie_duration : null
+    cookie_name     = (var.stickiness_type == "app_cookie") ? var.stickiness_cookie_name : null
   }
 
   health_check {
@@ -210,78 +200,34 @@ resource "aws_lb_target_group" "group" {
   }
 
   tags = {
-    Name = var.name
+    Name    = var.name
+    Service = var.service_name
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
 resource "aws_lb_target_group_attachment" "attachment" {
-  count = length(var.attachments)
+  for_each = var.attachments
 
-  target_group_arn  = aws_lb_target_group.group.arn
-  target_id         = var.attachments[count.index].address
-  port              = var.attachments[count.index].port
-  availability_zone = var.attachments[count.index].availability_zone
+  target_group_arn  = aws_lb_target_group.default.arn
+  target_id         = each.value.address
+  port              = each.value.port
+  availability_zone = each.value.availability_zone
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
-resource "aws_lb_listener_rule" "rule" {
-  listener_arn = var.listener_arn
-  priority     = var.priority
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.group.arn
-  }
-
-  condition {
-    dynamic "host_header" {
-      for_each = length(var.host_headers) > 0 ? [true] : []
-
-      content {
-        values = var.host_headers
-      }
-    }
-
-    dynamic "path_pattern" {
-      for_each = length(var.path_patterns) > 0 ? [true] : []
-
-      content {
-        values = var.path_patterns
-      }
-    }
-
-    dynamic "http_request_method" {
-      for_each = length(var.http_request_methods) > 0 ? [true] : []
-
-      content {
-        values = var.http_request_methods
-      }
-    }
-
-    dynamic "http_header" {
-      for_each = var.http_headers
-
-      content {
-        http_header_name = http_header.value.http_header_name
-        values           = http_header.value.values
-      }
-    }
-
-    # dynamic "source_ip" {
-    #   for_each = length(local.source_ips) > 0 ? [local.source_ips] : []
-    #
-    #   content {
-    #     values = source_ip.value
-    #   }
-    # }
-
-    # dynamic "query_string" {
-    #   for_each = local.query_strings
-    #   content {
-    #     key   = split(",", query_string.value).0
-    #     value = split(",", query_string.value).1
-    #   }
-    # }
-  }
-
+output "arn" {
+  description = "ARN of the target group."
+  value       = aws_lb_target_group.default.arn
 }
 
+output "weight" {
+  description = "The target group weight."
+  value       = var.target_group_weight
+}
