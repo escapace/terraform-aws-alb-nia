@@ -4,7 +4,7 @@ provider "aws" {
 
 variable "region" {
   description = "AWS Region"
-  type = string
+  type        = string
 }
 
 variable "services" {
@@ -46,80 +46,105 @@ variable "vpc_id" {
 locals {
   exclude_kind = ["ingress-gateway", "connect-proxy"]
 
-  services = distinct([for service in values(var.services) : service if !contains(local.exclude_kind, service.kind) && service.status == "passing" && try(tobool(service.meta.alb_enabled), false)])
-  names = distinct([for service in local.services : service.name])
+  services = distinct([
+    for service in values(var.services) : service
+    if !contains(local.exclude_kind, service.kind)
+    && service.status == "passing"
+    && try(tobool(service.meta.alb_enabled), false)
+  ])
 
-  attachments = {for name in local.names : name => [for service in local.services : {
-    port              = tonumber(service.port)
-    availability_zone = service.node_meta.availability_zone
-    address           = service.address
-  } if service.name == name]}
+  service_names = distinct([
+    for service in local.services : service.name
+  ])
 
-  meta = { for name in local.names : name => merge([for service in local.services : {
-    deregistration_delay             = try(tonumber(service.meta.alb_deregistration_delay), null)
-    preserve_client_ip               = try(tobool(service.meta.alb_preserve_client_ip), null)
-    protocol_version                 = try(service.meta.alb_protocol_version, "HTTP1")
-    protocol                         = try(service.meta.alb_protocol, "HTTP")
-    slow_start                       = try(service.meta.alb_slow_start, null)
-    load_balancing_algorithm_type    = try(service.meta.alb_load_balancing_algorithm_type, "round_robin")
-    stickiness_enabled               = try(tobool(service.meta.alb_stickiness_enabled), true)
-    stickiness_cookie_duration       = try(tonumber(service.meta.alb_stickiness_cookie_duration), null)
-    stickiness_cookie_name           = try(service.meta.stickiness_cookie_name, null)
-    stickiness_type                  = try(service.meta.alb_stickiness_type, "lb_cookie")
-    host_headers                     = try(compact(distinct(jsondecode(service.meta.alb_host_headers))), [])
-    http_headers                     = try(compact(distinct(jsondecode(service.meta.alb_http_headers))), [])
-    http_request_methods             = try(compact(distinct(jsondecode(service.meta.alb_http_request_methods))), [])
-    path_patterns                    = try(compact(distinct(jsondecode(service.meta.alb_path_patterns))), [])
+  target_group_names = {
+    for name in local.service_names : name => distinct([
+      for service in local.services :
+      try(service.meta.alb_target_group_name, "default") if service.name == name
+    ])
+  }
 
-    health_check_enabled             = try(tobool(service.meta.alb_health_check_enabled), null)
-    health_check_healthy_threshold   = try(tonumber(service.meta.alb_health_check_healthy_threshold), null)
-    health_check_interval            = try(tonumber(service.meta.alb_health_check_interval), null)
-    health_check_matcher             = try(service.meta.alb_health_check_matcher, null)
-    health_check_path                = try(service.meta.alb_health_check_path, null)
-    health_check_timeout             = try(tonumber(service.meta.alb_health_check_timeout), null)
-    health_check_unhealthy_threshold = try(tonumber(service.meta.alb_health_check_unhealthy_threshold), null)
+  target_group_attachments = {
+    for name in local.service_names : name => {
+      for group_name in local.target_group_names[name] : group_name => {
+        for service in local.services : service.id => {
+          port              = tonumber(service.port)
+          availability_zone = service.node_meta.availability_zone
+          address           = service.address
+        } if service.name == name && try(service.meta.alb_target_group_name, "default") == group_name
+      }
+    }
+  }
 
-    priority                         = try(tonumber(service.meta.alb_priority), null)
-  } if service.name == name]...) }
+  target_groups = {
+    for name in local.service_names : name => {
+      for group_name in local.target_group_names[name] : group_name => merge([
+        for service in local.services : {
+          deregistration_delay          = try(tonumber(service.meta.alb_deregistration_delay), null)
+          preserve_client_ip            = try(tobool(service.meta.alb_preserve_client_ip), null)
+          protocol_version              = try(service.meta.alb_protocol_version, "HTTP1")
+          protocol                      = try(service.meta.alb_protocol, "HTTP")
+          slow_start                    = try(service.meta.alb_slow_start, null)
+          load_balancing_algorithm_type = try(service.meta.alb_load_balancing_algorithm_type, "round_robin")
+          stickiness_enabled            = try(tobool(service.meta.alb_stickiness_enabled), false)
+          stickiness_cookie_duration    = try(tonumber(service.meta.alb_stickiness_cookie_duration), null)
+          stickiness_cookie_name        = try(service.meta.stickiness_cookie_name, null)
+          stickiness_type               = try(service.meta.alb_stickiness_type, "lb_cookie")
 
-  rules = { for name in local.names : name => merge(local.meta[name], {
-    name        = name
-    attachments = local.attachments[name]
-  }) }
+          health_check_enabled             = try(tobool(service.meta.alb_health_check_enabled), null)
+          health_check_healthy_threshold   = try(tonumber(service.meta.alb_health_check_healthy_threshold), null)
+          health_check_interval            = try(tonumber(service.meta.alb_health_check_interval), null)
+          health_check_matcher             = try(service.meta.alb_health_check_matcher, null)
+          health_check_path                = try(service.meta.alb_health_check_path, null)
+          health_check_timeout             = try(tonumber(service.meta.alb_health_check_timeout), null)
+          health_check_unhealthy_threshold = try(tonumber(service.meta.alb_health_check_unhealthy_threshold), null)
+
+          target_group_weight = try(tonumber(service.meta.alb_target_group_weight), null)
+        } if service.name == name && try(service.meta.alb_target_group_name, "default") == group_name
+      ]...)
+    }
+  }
+
+  listener_rules = {
+    for name in local.service_names : name => merge([
+      for service in local.services : {
+        host_headers         = try(compact(distinct(jsondecode(service.meta.alb_host_headers))), [])
+        http_headers         = try(compact(distinct(jsondecode(service.meta.alb_http_headers))), [])
+        http_request_methods = try(compact(distinct(jsondecode(service.meta.alb_http_request_methods))), [])
+        path_patterns        = try(compact(distinct(jsondecode(service.meta.alb_path_patterns))), [])
+        priority             = try(tonumber(service.meta.alb_priority), null)
+      } if service.name == name
+    ]...)
+  }
+
+  values = {
+    for name in local.service_names : name => merge(
+      local.listener_rules[name],
+      {
+        target_groups = {
+          for group_name in local.target_group_names[name] : group_name => merge(local.target_groups[name][group_name], {
+            attachments = local.target_group_attachments[name][group_name]
+          })
+        }
+      }
+    )
+  }
+
+  # debug = local.rules
 }
 
-module "rule" {
-  source = "./modules/rule"
+module "listener_rule" {
+  source = "./modules/listener-rule"
 
-  for_each = local.rules
+  for_each = local.values
 
-  name                             = each.value.name
-  attachments                      = each.value.attachments
-
-  deregistration_delay             = each.value.deregistration_delay
-  load_balancing_algorithm_type    = each.value.load_balancing_algorithm_type
-  preserve_client_ip               = each.value.preserve_client_ip
-  protocol_version                 = each.value.protocol_version
-  protocol                         = each.value.protocol
-  slow_start                       = each.value.slow_start
-  stickiness_enabled               = each.value.stickiness_enabled
-  stickiness_cookie_duration       = each.value.stickiness_cookie_duration
-  stickiness_cookie_name           = each.value.stickiness_cookie_name
-  stickiness_type                  = each.value.stickiness_type
-  host_headers                     = each.value.host_headers
-  http_headers                     = each.value.http_headers
-  http_request_methods             = each.value.http_request_methods
-  path_patterns                    = each.value.path_patterns
-
-  health_check_enabled             = each.value.health_check_enabled
-  health_check_healthy_threshold   = each.value.health_check_healthy_threshold
-  health_check_interval            = each.value.health_check_interval
-  health_check_matcher             = each.value.health_check_matcher
-  health_check_path                = each.value.health_check_path
-  health_check_timeout             = each.value.health_check_timeout
-  health_check_unhealthy_threshold = each.value.health_check_unhealthy_threshold
-
-  priority                         = each.value.priority
+  name                 = each.key
+  target_groups        = each.value.target_groups
+  host_headers         = each.value.host_headers
+  http_headers         = each.value.http_headers
+  http_request_methods = each.value.http_request_methods
+  path_patterns        = each.value.path_patterns
+  priority             = each.value.priority
 
   listener_arn = var.listener_arn
   vpc_id       = var.vpc_id
@@ -134,4 +159,3 @@ module "rule" {
 #     values = sha1(jsonencode(local.values))
 #   }
 # }
-
