@@ -35,10 +35,6 @@ variable "target_groups" {
   }))
 }
 
-locals {
-  single = length(values(var.target_groups)) == 1
-}
-
 # variable "target_groups" {
 #   description = "aws_lb_target_group_attachment arguments"
 #   type        = list(object({
@@ -89,10 +85,18 @@ variable "priority" {
   type        = number
   default     = null
   description = "Priority of listener rule between 1 to 50000"
+
   # validation {
-  #   condition     = var.listener_rule_priority > 0 && var.listener_rule_priority < 50000
+  #   condition     = var.priority == null || (var.priority >= 1 && var.priority <= 50000)
   #   error_message = "The priority of listener rule must between 1 to 50000."
   # }
+}
+
+locals {
+  single                           = length(values(var.target_groups)) == 1
+  stickiness_enabled               = anytrue([for target_group in var.target_groups : target_group.stickiness_enabled])
+  stickiness_cookie_duration_array = [for target_group in var.target_groups : target_group.stickiness_cookie_duration if target_group.stickiness_cookie_duration != null]
+  stickiness_cookie_duration       = length(local.stickiness_cookie_duration_array) == 0 ? 86400 : min(local.stickiness_cookie_duration_array)
 }
 
 module "target_group" {
@@ -111,7 +115,7 @@ module "target_group" {
   protocol_version              = each.value.protocol_version
   protocol                      = each.value.protocol
   slow_start                    = each.value.slow_start
-  stickiness_enabled            = local.single ? each.value.stickiness_enabled : false
+  stickiness_enabled            = each.value.stickiness_enabled
   stickiness_cookie_duration    = each.value.stickiness_cookie_duration
   stickiness_cookie_name        = each.value.stickiness_cookie_name
   stickiness_type               = each.value.stickiness_type
@@ -151,8 +155,8 @@ resource "aws_lb_listener_rule" "rule" {
         }
 
         stickiness {
-          enabled  = false
-          duration = 600
+          enabled  = local.stickiness_enabled
+          duration = local.stickiness_cookie_duration
         }
       }
     }

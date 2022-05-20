@@ -81,6 +81,11 @@ variable "stickiness_cookie_duration" {
   description = "Only used when the type is lb_cookie. The time period, in seconds, during which requests from a client should be routed to the same target. After this time period expires, the load balancer-generated cookie is considered stale. The range is 1 second to 1 week (604800 seconds). The default value is 1 day (86400 seconds)."
   type        = number
   default     = null
+
+  # validation {
+  #   condition     = var.stickiness_cookie_duration >= 1 && var.stickiness_cookie_duration <= 604800
+  #   error_message = "The stickiness_cookie_duration must between 1 to 604800."
+  # }
 }
 
 variable "stickiness_cookie_name" {
