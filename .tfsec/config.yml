@@ -1,0 +1,8 @@
+---
+
+exclude:
+  - aws-elb-alb-not-public
+  - aws-s3-enable-bucket-logging
+  - aws-vpc-add-description-to-security-group-rule
+  - aws-vpc-no-public-egress-sgr
+  - aws-vpc-no-public-ingress-sgr

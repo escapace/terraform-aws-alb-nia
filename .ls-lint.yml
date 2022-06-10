@@ -1,0 +1,8 @@
+ls:
+  .tf: kebab-case
+
+ignore:
+  - .git
+  - .github
+  - .terraform
+  - test
