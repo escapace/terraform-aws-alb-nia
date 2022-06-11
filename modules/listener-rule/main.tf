@@ -219,16 +219,12 @@ resource "aws_lb_listener_rule" "rule" {
   }
 
   dynamic "condition" {
-    for_each = length(var.http_headers) > 0 ? [true] : []
+    for_each = var.http_headers
 
     content {
-      dynamic "http_header" {
-        for_each = var.http_headers
-
-        content {
-          http_header_name = http_header.value.http_header_name
-          values           = http_header.value.values
-        }
+      http_header {
+        http_header_name = condition.value.http_header_name
+        values           = condition.value.values
       }
     }
   }
