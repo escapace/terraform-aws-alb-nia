@@ -162,56 +162,64 @@ resource "aws_lb_listener_rule" "rule" {
     }
   }
 
-  condition {
-    dynamic "host_header" {
-      for_each = length(var.host_headers) > 0 ? [true] : []
+  dynamic "condition" {
+    for_each = length(var.host_headers) > 0 ? [true] : []
 
-      content {
+    content {
+      host_header {
         values = var.host_headers
       }
     }
+  }
 
-    dynamic "path_pattern" {
-      for_each = length(var.path_patterns) > 0 ? [true] : []
 
-      content {
+  dynamic "condition" {
+    for_each = length(var.path_patterns) > 0 ? [true] : []
+
+    content {
+      path_pattern {
         values = var.path_patterns
       }
     }
+  }
 
-    dynamic "http_request_method" {
-      for_each = length(var.http_request_methods) > 0 ? [true] : []
+  dynamic "condition" {
+    for_each = length(var.http_request_methods) > 0 ? [true] : []
 
-      content {
+    content {
+      http_request_method {
         values = var.http_request_methods
       }
     }
+  }
 
-    dynamic "http_header" {
-      for_each = var.http_headers
+  dynamic "condition" {
+    for_each = var.http_headers
 
-      content {
-        http_header_name = http_header.value.http_header_name
-        values           = http_header.value.values
+    content {
+      http_header {
+        http_header_name = condition.value.http_header_name
+        values           = condition.value.values
       }
     }
-
-    # dynamic "source_ip" {
-    #   for_each = length(local.source_ips) > 0 ? [local.source_ips] : []
-    #
-    #   content {
-    #     values = source_ip.value
-    #   }
-    # }
-
-    # dynamic "query_string" {
-    #   for_each = local.query_strings
-    #   content {
-    #     key   = split(",", query_string.value).0
-    #     value = split(",", query_string.value).1
-    #   }
-    # }
   }
+
+  # dynamic "source_ip" {
+  #   for_each = length(local.source_ips) > 0 ? [local.source_ips] : []
+  #
+  #   content {
+  #     values = source_ip.value
+  #   }
+  # }
+
+  # dynamic "query_string" {
+  #   for_each = local.query_strings
+  #   content {
+  #     key   = split(",", query_string.value).0
+  #     value = split(",", query_string.value).1
+  #   }
+  # }
+  # }
 
   lifecycle {
     create_before_destroy = true
