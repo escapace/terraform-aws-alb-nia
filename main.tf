@@ -112,7 +112,7 @@ locals {
         http_headers         = try(jsondecode(service.meta.alb_http_headers), [])
         http_request_methods = try(compact(distinct(jsondecode(service.meta.alb_http_request_methods))), [])
         path_patterns        = try(compact(distinct(jsondecode(service.meta.alb_path_patterns))), [])
-        query_strings        = try(jsondecode(service.meta.alb_query_string), [])
+        query_strings        = try(jsondecode(service.meta.alb_query_strings), [])
         source_ips           = try(compact(distinct(jsondecode(service.meta.alb_source_ips))), [])
         priority             = try(tonumber(service.meta.alb_priority), null)
       } if service.name == name
