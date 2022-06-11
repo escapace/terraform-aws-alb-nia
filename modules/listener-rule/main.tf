@@ -71,6 +71,12 @@ variable "path_patterns" {
   default     = []
 }
 
+variable "source_ips" {
+  description = "List of source IPv4 and IPv6 CIDR notations to match."
+  type        = list(string)
+  default     = []
+}
+
 variable "listener_arn" {
   description = "The ARN of the listener to which to attach the rule."
   type        = string
@@ -200,6 +206,16 @@ resource "aws_lb_listener_rule" "rule" {
       http_header {
         http_header_name = condition.value.http_header_name
         values           = condition.value.values
+      }
+    }
+  }
+
+  dynamic "condition" {
+    for_each = length(var.source_ips) > 0 ? [true] : []
+
+    content {
+      source_ip {
+        values = var.source_ips
       }
     }
   }
