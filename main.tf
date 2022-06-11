@@ -112,6 +112,7 @@ locals {
         http_headers         = try(jsondecode(service.meta.alb_http_headers), [])
         http_request_methods = try(compact(distinct(jsondecode(service.meta.alb_http_request_methods))), [])
         path_patterns        = try(compact(distinct(jsondecode(service.meta.alb_path_patterns))), [])
+        query_strings        = try(jsondecode(service.meta.alb_query_string), [])
         source_ips           = try(compact(distinct(jsondecode(service.meta.alb_source_ips))), [])
         priority             = try(tonumber(service.meta.alb_priority), null)
       } if service.name == name
@@ -145,6 +146,7 @@ module "listener_rule" {
   http_headers         = each.value.http_headers
   http_request_methods = each.value.http_request_methods
   path_patterns        = each.value.path_patterns
+  query_strings        = each.value.query_strings
   source_ips           = each.value.source_ips
   priority             = each.value.priority
 

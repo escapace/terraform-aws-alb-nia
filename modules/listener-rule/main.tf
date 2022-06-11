@@ -77,6 +77,15 @@ variable "source_ips" {
   default     = []
 }
 
+variable "query_strings" {
+  description = "Query string pairs or values to match."
+  type = list(object({
+    key   = any
+    value = string
+  }))
+  default = []
+}
+
 variable "listener_arn" {
   description = "The ARN of the listener to which to attach the rule."
   type        = string
@@ -200,17 +209,6 @@ resource "aws_lb_listener_rule" "rule" {
   }
 
   dynamic "condition" {
-    for_each = var.http_headers
-
-    content {
-      http_header {
-        http_header_name = condition.value.http_header_name
-        values           = condition.value.values
-      }
-    }
-  }
-
-  dynamic "condition" {
     for_each = length(var.source_ips) > 0 ? [true] : []
 
     content {
@@ -220,22 +218,36 @@ resource "aws_lb_listener_rule" "rule" {
     }
   }
 
-  # dynamic "source_ip" {
-  #   for_each = length(local.source_ips) > 0 ? [local.source_ips] : []
-  #
-  #   content {
-  #     values = source_ip.value
-  #   }
-  # }
+  dynamic "condition" {
+    for_each = length(var.http_headers) > 0 ? [true] : []
 
-  # dynamic "query_string" {
-  #   for_each = local.query_strings
-  #   content {
-  #     key   = split(",", query_string.value).0
-  #     value = split(",", query_string.value).1
-  #   }
-  # }
-  # }
+    content {
+      dynamic "http_header" {
+        for_each = var.http_headers
+
+        content {
+          http_header_name = http_header.value.http_header_name
+          values           = http_header.value.values
+        }
+      }
+    }
+  }
+
+  dynamic "condition" {
+    for_each = length(var.query_strings) > 0 ? [true] : []
+
+    content {
+      dynamic "query_string" {
+        for_each = var.query_strings
+
+        content {
+          key   = query_string.value.key
+          value = query_string.value.value
+        }
+      }
+    }
+  }
+
 
   lifecycle {
     create_before_destroy = true
