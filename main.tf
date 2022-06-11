@@ -109,7 +109,7 @@ locals {
     for name in local.service_names : name => merge([
       for service in local.services : {
         host_headers         = try(compact(distinct(jsondecode(service.meta.alb_host_headers))), [])
-        http_headers         = try(compact(distinct(jsondecode(service.meta.alb_http_headers))), [])
+        http_headers         = try(jsondecode(service.meta.alb_http_headers), [])
         http_request_methods = try(compact(distinct(jsondecode(service.meta.alb_http_request_methods))), [])
         path_patterns        = try(compact(distinct(jsondecode(service.meta.alb_path_patterns))), [])
         priority             = try(tonumber(service.meta.alb_priority), null)
