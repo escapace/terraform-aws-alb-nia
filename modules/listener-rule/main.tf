@@ -1,3 +1,7 @@
+terraform {
+  experiments = [module_variable_optional_attrs]
+}
+
 variable "name" {
   description = "Service name."
   type        = string
@@ -80,7 +84,7 @@ variable "source_ips" {
 variable "query_strings" {
   description = "Query string pairs or values to match."
   type = list(object({
-    key   = any
+    key   = optional(string)
     value = string
   }))
   default = []
