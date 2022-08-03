@@ -32,6 +32,8 @@ variable "target_groups" {
     health_check_interval            = any
     health_check_matcher             = any
     health_check_path                = any
+    health_check_port                = any
+    health_check_protocol            = any
     health_check_timeout             = any
     health_check_unhealthy_threshold = any
 
@@ -144,6 +146,8 @@ module "target_group" {
   health_check_interval            = each.value.health_check_interval
   health_check_matcher             = each.value.health_check_matcher
   health_check_path                = each.value.health_check_path
+  health_check_port                = each.value.health_check_port
+  health_check_protocol            = each.value.health_check_protocol
   health_check_timeout             = each.value.health_check_timeout
   health_check_unhealthy_threshold = each.value.health_check_unhealthy_threshold
 

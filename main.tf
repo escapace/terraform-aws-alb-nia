@@ -96,6 +96,8 @@ locals {
           health_check_interval            = try(tonumber(service.meta.alb_health_check_interval), null)
           health_check_matcher             = try(service.meta.alb_health_check_matcher, null)
           health_check_path                = try(service.meta.alb_health_check_path, null)
+          health_check_port                = try(tonumber(service.meta.alb_health_check_port), null)
+          health_check_protocol            = try(service.meta.alb_health_check_protocol, try(service.meta.alb_protocol, "HTTP"))
           health_check_timeout             = try(tonumber(service.meta.alb_health_check_timeout), null)
           health_check_unhealthy_threshold = try(tonumber(service.meta.alb_health_check_unhealthy_threshold), null)
 
