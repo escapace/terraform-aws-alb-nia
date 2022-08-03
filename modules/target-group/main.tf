@@ -152,6 +152,22 @@ variable "health_check_unhealthy_threshold" {
   default     = 3
 }
 
+
+# health_check_port
+# health_check_protocol
+
+variable "health_check_port" {
+  type        = number
+  description = "Port to use to connect with the target. Valid values are either ports 1-65535, or traffic-port. Defaults to traffic-port."
+  default     = null
+}
+
+variable "health_check_protocol" {
+  type        = string
+  description = "Protocol to use to connect with the target."
+  default     = null
+}
+
 resource "random_string" "name_prefix" {
   keepers = {
     name         = var.name
@@ -198,8 +214,9 @@ resource "aws_lb_target_group" "default" {
     healthy_threshold   = var.health_check_healthy_threshold
     interval            = var.health_check_interval
     matcher             = var.health_check_matcher
-    protocol            = var.protocol
     path                = var.health_check_path
+    port                = var.health_check_port
+    protocol            = var.health_check_protocol
     timeout             = var.health_check_timeout
     unhealthy_threshold = var.health_check_unhealthy_threshold
   }
