@@ -190,8 +190,8 @@ resource "random_string" "name_prefix" {
 }
 
 locals {
-  has_ipv4        = anytrue(flatten([for attachment in var.attachments : length(regexall("[:]", attachment.address)) > 0]))
-  has_ipv6        = anytrue(flatten([for attachment in var.attachments : length(regexall("[.]", attachment.address)) > 0]))
+  has_ipv4        = anytrue(flatten([for attachment in var.attachments : length(regexall("[.]", attachment.address)) > 0]))
+  has_ipv6        = anytrue(flatten([for attachment in var.attachments : length(regexall("[:]", attachment.address)) > 0]))
   ip_address_type = local.has_ipv4 && local.has_ipv6 ? "mixed" : local.has_ipv4 ? "ipv4" : local.has_ipv6 ? "ipv6" : "none"
 }
 
