@@ -189,6 +189,12 @@ resource "random_string" "name_prefix" {
   }
 }
 
+locals {
+  has_ipv4        = anytrue(flatten([for attachment in var.attachments : regexall("[:]", attachment)]))
+  has_ipv6        = anytrue(flatten([for attachment in var.attachments : regexall("[.]", attachment)]))
+  ip_address_type = local.has_ipv4 && local.has_ipv6 ? "mixed" : local.has_ipv4 ? "ipv4" : local.has_ipv6 ? "ipv6" : "none"
+}
+
 resource "aws_lb_target_group" "default" {
   name_prefix = random_string.name_prefix.result
 
@@ -200,6 +206,7 @@ resource "aws_lb_target_group" "default" {
   protocol_version              = var.protocol_version
   slow_start                    = var.slow_start
   target_type                   = "ip"
+  ip_address_type               = local.ip_address_type
   vpc_id                        = var.vpc_id
 
   stickiness {
@@ -228,6 +235,11 @@ resource "aws_lb_target_group" "default" {
 
   lifecycle {
     create_before_destroy = true
+
+    precondition {
+      condition     = local.ip_address_type == "ipv4" || local.ip_address_type == "ipv6"
+      error_message = "target group ip address mismatch"
+    }
   }
 }
 
