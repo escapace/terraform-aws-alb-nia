@@ -50,6 +50,45 @@ variable "target_groups" {
 #   }))
 # }
 
+variable "authenticate_oidc" {
+  description = "Information for creating an authenticate action using OIDC."
+  type = object({
+    authentication_request_extra_params = optional(list(object({
+      key   = string
+      value = string
+    })))
+    authorization_endpoint     = string
+    client_id                  = string
+    client_secret              = string
+    issuer                     = string
+    on_unauthenticated_request = optional(string)
+    scope                      = optional(string)
+    session_cookie_name        = optional(string)
+    session_timeout            = optional(number)
+    token_endpoint             = string
+    user_info_endpoint         = string
+  })
+  default = null
+}
+
+variable "authenticate_cognito" {
+  description = "Information for creating an authenticate action using Cognito."
+  type = object({
+    authentication_request_extra_params = optional(list(object({
+      key   = string
+      value = string
+    })))
+    on_unauthenticated_request = optional(string)
+    scope                      = optional(string)
+    session_cookie_name        = optional(string)
+    session_timeout            = optional(number)
+    user_pool_arn              = string
+    user_pool_client_id        = string
+    user_pool_domain           = string
+  })
+  default = null
+}
+
 variable "host_headers" {
   description = "A list of host header patterns to match. The maximum size of each pattern is 128 characters. Comparison is case insensitive. Wildcard characters supported: * (matches 0 or more characters) and ? (matches exactly 1 character). Only one pattern needs to match for the condition to be satisfied."
   type        = list(string)
@@ -118,6 +157,21 @@ locals {
   stickiness_enabled               = anytrue([for target_group in var.target_groups : target_group.stickiness_enabled])
   stickiness_cookie_duration_array = [for target_group in var.target_groups : target_group.stickiness_cookie_duration if target_group.stickiness_cookie_duration != null]
   stickiness_cookie_duration       = length(local.stickiness_cookie_duration_array) == 0 ? 86400 : min(local.stickiness_cookie_duration_array)
+  authenticate_oidc_enabled = try(
+    alltrue([
+      lookup(var.authenticate_oidc, "authorization_endpoint", false) != false,
+      lookup(var.authenticate_oidc, "client_id", false) != false,
+      lookup(var.authenticate_oidc, "client_secret", false) != false,
+      lookup(var.authenticate_oidc, "issuer", false) != false,
+      lookup(var.authenticate_oidc, "token_endpoint", false) != false,
+      lookup(var.authenticate_oidc, "user_info_endpoint", false) != false
+  ]), false)
+  authenticate_cognito_enabled = try(
+    alltrue([
+      lookup(var.authenticate_cognito, "user_pool_arn", false) != false,
+      lookup(var.authenticate_cognito, "user_pool_client_id", false) != false,
+      lookup(var.authenticate_cognito, "user_pool_domain", false) != false
+  ]), false)
 }
 
 module "target_group" {
@@ -159,6 +213,47 @@ module "target_group" {
 resource "aws_lb_listener_rule" "rule" {
   listener_arn = var.listener_arn
   priority     = var.priority
+
+  dynamic "action" {
+    for_each = local.authenticate_oidc_enabled ? [true] : []
+
+    content {
+      type = "authenticate-oidc"
+
+      authenticate_oidc {
+        authentication_request_extra_params = lookup(var.authenticate_oidc, "authentication_request_extra_params", null)
+        authorization_endpoint              = lookup(var.authenticate_oidc, "authorization_endpoint", null)
+        client_id                           = lookup(var.authenticate_oidc, "client_id", null)
+        client_secret                       = lookup(var.authenticate_oidc, "client_secret", null)
+        issuer                              = lookup(var.authenticate_oidc, "issuer", null)
+        on_unauthenticated_request          = lookup(var.authenticate_oidc, "on_unauthenticated_request", null)
+        scope                               = lookup(var.authenticate_oidc, "scope", null)
+        session_cookie_name                 = lookup(var.authenticate_oidc, "session_cookie_name", null)
+        session_timeout                     = lookup(var.authenticate_oidc, "session_timeout", null)
+        token_endpoint                      = lookup(var.authenticate_oidc, "token_endpoint", null)
+        user_info_endpoint                  = lookup(var.authenticate_oidc, "user_info_endpoint", null)
+      }
+    }
+  }
+
+  dynamic "action" {
+    for_each = local.authenticate_cognito_enabled ? [true] : []
+
+    content {
+      type = "authenticate-cognito"
+
+      authenticate_cognito {
+        authentication_request_extra_params = lookup(var.authenticate_cognito, "authentication_request_extra_params", null)
+        on_unauthenticated_request          = lookup(var.authenticate_cognito, "on_unauthenticated_request", null)
+        scope                               = lookup(var.authenticate_cognito, "scope", null)
+        session_cookie_name                 = lookup(var.authenticate_cognito, "session_cookie_name", null)
+        session_timeout                     = lookup(var.authenticate_cognito, "session_timeout", null)
+        user_pool_arn                       = lookup(var.authenticate_cognito, "user_pool_arn", null)
+        user_pool_client_id                 = lookup(var.authenticate_cognito, "user_pool_client_id", null)
+        user_pool_domain                    = lookup(var.authenticate_cognito, "user_pool_domain", null)
+      }
+    }
+  }
 
   action {
     type             = "forward"
@@ -257,4 +352,3 @@ resource "aws_lb_listener_rule" "rule" {
     create_before_destroy = true
   }
 }
-

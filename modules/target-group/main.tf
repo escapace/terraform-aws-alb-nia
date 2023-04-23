@@ -180,7 +180,7 @@ resource "random_string" "name_prefix" {
 
   length  = 6
   lower   = true
-  number  = false
+  numeric = false
   special = false
   upper   = false
 
