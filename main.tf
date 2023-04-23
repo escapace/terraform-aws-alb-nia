@@ -110,13 +110,15 @@ locals {
   listener_rules = {
     for name in local.service_names : name => merge([
       for service in local.services : {
+        authenticate_cognito = try(jsondecode(service.meta.authenticate_cognito), null)
+        authenticate_oidc    = try(jsondecode(service.meta.authenticate_oidc), null)
         host_headers         = try(compact(distinct(jsondecode(service.meta.alb_host_headers))), [])
         http_headers         = try(jsondecode(service.meta.alb_http_headers), [])
         http_request_methods = try(compact(distinct(jsondecode(service.meta.alb_http_request_methods))), [])
         path_patterns        = try(compact(distinct(jsondecode(service.meta.alb_path_patterns))), [])
+        priority             = try(tonumber(service.meta.alb_priority), null)
         query_strings        = try(jsondecode(service.meta.alb_query_strings), [])
         source_ips           = try(compact(distinct(jsondecode(service.meta.alb_source_ips))), [])
-        priority             = try(tonumber(service.meta.alb_priority), null)
       } if service.name == name
     ]...)
   }
