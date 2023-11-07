@@ -217,7 +217,7 @@ resource "aws_lb_listener_rule" "rule" {
       type = "authenticate-oidc"
 
       authenticate_oidc {
-        authentication_request_extra_params = var.authenticate_oidc == null ? null : var.authenticate_oidc["authentication_request_extra_params"]
+        authentication_request_extra_params = var.authenticate_oidc == null ? null : try(var.authenticate_oidc["authentication_request_extra_params"], null)
         authorization_endpoint              = lookup(var.authenticate_oidc, "authorization_endpoint", null)
         client_id                           = lookup(var.authenticate_oidc, "client_id", null)
         client_secret                       = lookup(var.authenticate_oidc, "client_secret", null)
@@ -239,7 +239,7 @@ resource "aws_lb_listener_rule" "rule" {
       type = "authenticate-cognito"
 
       authenticate_cognito {
-        authentication_request_extra_params = var.authenticate_cognito == null ? null : var.authenticate_oidc["authentication_request_extra_params"]
+        authentication_request_extra_params = var.authenticate_cognito == null ? null : try(var.authenticate_cognito["authentication_request_extra_params"])
         on_unauthenticated_request          = lookup(var.authenticate_cognito, "on_unauthenticated_request", null)
         scope                               = lookup(var.authenticate_cognito, "scope", null)
         session_cookie_name                 = lookup(var.authenticate_cognito, "session_cookie_name", null)
