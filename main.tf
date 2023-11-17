@@ -35,8 +35,75 @@ variable "services" {
 
 variable "services_overrides" {
   description = "Consul services monitored by Consul-Terraform-Sync"
-  type        = list(any)
-  default     = []
+  type = map(object({
+    enabled                          = optional(bool)
+    port                             = optional(number)
+    deregistration_delay             = optional(number)
+    preserve_client_ip               = optional(bool)
+    protocol_version                 = optional(string)
+    protocol                         = optional(string)
+    slow_start                       = optional(number)
+    load_balancing_algorithm_type    = optional(string)
+    stickiness_enabled               = optional(bool)
+    stickiness_cookie_duration       = optional(number)
+    stickiness_cookie_name           = optional(string)
+    stickiness_type                  = optional(string)
+    health_check_enabled             = optional(bool)
+    health_check_healthy_threshold   = optional(number)
+    health_check_interval            = optional(number)
+    health_check_matcher             = optional(string)
+    health_check_path                = optional(string)
+    health_check_port                = optional(number)
+    health_check_protocol            = optional(string)
+    health_check_timeout             = optional(number)
+    health_check_unhealthy_threshold = optional(number)
+    target_group_weight              = optional(number)
+    target_group_name                = optional(string)
+
+    authenticate_cognito = optional(object({
+      authentication_request_extra_params = optional(list(object({
+        key   = string
+        value = string
+      })))
+      on_unauthenticated_request = optional(string)
+      scope                      = optional(string)
+      session_cookie_name        = optional(string)
+      session_timeout            = optional(number)
+      user_pool_arn              = string
+      user_pool_client_id        = string
+      user_pool_domain           = string
+    }))
+    authenticate_oidc = optional(object({
+      authentication_request_extra_params = optional(list(object({
+        key   = string
+        value = string
+      })))
+      authorization_endpoint     = string
+      client_id                  = string
+      client_secret              = string
+      issuer                     = string
+      on_unauthenticated_request = optional(string)
+      scope                      = optional(string)
+      session_cookie_name        = optional(string)
+      session_timeout            = optional(number)
+      token_endpoint             = string
+      user_info_endpoint         = string
+    }))
+    host_headers = optional(list(string))
+    http_headers = optional(list(object({
+      http_header_name = string
+      values           = list(string)
+    })))
+    http_request_methods = optional(list(string))
+    path_patterns        = optional(list(string))
+    priority             = optional(number)
+    query_strings = optional(list(object({
+      key   = optional(string)
+      value = string
+    })))
+    source_ips = optional(list(string))
+  }))
+  default = {}
 }
 
 variable "listener_arn" {
@@ -52,11 +119,7 @@ variable "vpc_id" {
 locals {
   exclude_kind = ["ingress-gateway", "connect-proxy"]
 
-  services_overrides_names = distinct([
-    for service in var.services_overrides : service.name
-  ])
-
-  services_overrides = { for service_name in local.services_overrides_names : service_name => merge([for service in var.services_overrides : service if service.name == service_name]...) }
+  services_overrides = { for key, value in var.services_overrides : key => { for k, v in value : k => v if v != null } }
 
   services = distinct([
     for key, service in var.services : merge(service, { key = key })
