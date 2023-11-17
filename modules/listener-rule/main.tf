@@ -343,6 +343,9 @@ resource "aws_lb_listener_rule" "rule" {
     }
   }
 
+  tags = {
+    Name = var.name
+  }
 
   lifecycle {
     create_before_destroy = true
