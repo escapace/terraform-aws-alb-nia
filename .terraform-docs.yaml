@@ -11,10 +11,6 @@ output:
 sections:
   hide: [modules, providers, requirements]
 
-sort:
-  enabled: true
-  by: name
-
 settings:
   anchor: false
   color: false
@@ -29,3 +25,7 @@ settings:
   required: true
   sensitive: true
   type: true
+
+sort:
+  by: name
+  enabled: true
