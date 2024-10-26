@@ -1,4 +1,4 @@
-formatter: markdown
+formatter: markdown table
 
 output:
   file: README.md
@@ -8,8 +8,21 @@ output:
     {{ .Content }}
     <!-- END_TF_DOCS -->
 
+header-from: main.tf
+
+content: |-
+  {{ .Header }}
+  {{ .Inputs }}
+  {{ .Outputs }}
+  {{ .Resources }}
+  {{ .Requirements }}
+  {{ .Footer }}
+
 sections:
-  hide: [modules, providers, requirements]
+  hide: [modules, providers]
+
+recursive:
+  enabled: false
 
 settings:
   anchor: false
@@ -27,5 +40,5 @@ settings:
   type: true
 
 sort:
-  by: name
+  by: required
   enabled: true

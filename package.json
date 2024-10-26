@@ -29,14 +29,14 @@
   "repository": "escapace/terraform-aws-alb-nia",
   "scripts": {
     "docs": "terraform-docs . && prettier --write README.md",
-    "format": "syncpack format && eslint --no-warn-ignored --fix && prettier -uw . && terraform fmt",
+    "format": "syncpack format && eslint --no-warn-ignored --fix && prettier -uw . && terraform fmt -recursive",
     "lint": "pnpm run ls-lint && eslint && pnpm run tflint && pnpm run trivy",
     "ls-lint": "ls-lint --config .ls-lint.yaml",
     "pack": "pnpm-pack workspace --no-build --pack-destination lib/context.tgz",
     "prepare": "lefthook install && terraform init -backend=false -upgrade && tflint --init",
     "syncpack": "syncpack fix-mismatches && syncpack set-semver-ranges && syncpack format",
     "tflint": "tflint --recursive --chdir .",
-    "trivy": "trivy fs --scanners misconfig --include-dev-deps --skip-dirs '.terraform/**' --tf-vars example.tfvars .",
+    "trivy": "trivy fs --scanners misconfig --include-dev-deps --skip-dirs '.terraform/**' --skip-dirs 'examples' --tf-vars example.tfvars .",
     "typecheck": "terraform validate"
   },
   "sideEffects": false,

@@ -15,4 +15,5 @@ ignore:
   - .terraform
   - .terraform.lock.hcl
   - .tflint.hcl
+  - examples
   - node_modules
